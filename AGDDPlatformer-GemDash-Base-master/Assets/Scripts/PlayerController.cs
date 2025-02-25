@@ -10,6 +10,7 @@ namespace AGDDPlatformer
         public float jumpDeceleration = 0.5f; // Upwards slow after releasing jump button
         public float cayoteTime = 0.1f; // Lets player jump just after leaving ground
         public float jumpBufferTime = 0.1f; // Lets the player input a jump just before becoming grounded
+        Vector2 windForce;
 
         [Header("Dash")]
         public float dashSpeed;
@@ -157,7 +158,17 @@ namespace AGDDPlatformer
                     jumpReleased = false;
                 }
 
-                velocity.x = move.x * maxSpeed;
+                //velocity.x = move.x * maxSpeed;
+                velocity.x = move.x * maxSpeed + windForce.x;
+                // If the wind pushes upwards, counteract gravity
+                if (windForce.y > 0 && velocity.y < windForce.y)
+                {
+                    velocity.y = windForce.y; // Override gravity for upward wind
+                }
+                else
+                {
+                    velocity.y += windForce.y * Time.deltaTime; // Apply wind gradually
+                }
 
                 if (isGrounded || (velocity + jumpBoost).magnitude < velocity.magnitude)
                 {
@@ -204,6 +215,11 @@ namespace AGDDPlatformer
         public void SetJumpBoost(Vector2 jumpBoost)
         {
             this.jumpBoost = jumpBoost;
+        }
+
+        public void SetWindForce(Vector2 force)
+        {
+            windForce = force;
         }
     }
 }
