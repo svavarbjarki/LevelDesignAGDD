@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace AGDDPlatformer
 {
@@ -10,6 +11,9 @@ namespace AGDDPlatformer
         public float jumpDeceleration = 0.5f; // Upwards slow after releasing jump button
         public float cayoteTime = 0.1f; // Lets player jump just after leaving ground
         public float jumpBufferTime = 0.1f; // Lets the player input a jump just before becoming grounded
+        public bool reversedGravity = false;
+        public bool groundedReverse = false;
+        public bool inGravitySwitch = false;
         Vector2 windForce;
 
         [Header("Dash")]
@@ -36,8 +40,8 @@ namespace AGDDPlatformer
         float lastGroundedTime;
         bool canJump;
         bool jumpReleased;
-        Vector2 move;
-        float defaultGravityModifier;
+        public Vector2 move;
+        public float defaultGravityModifier;
 
         SpriteRenderer spriteRenderer;
 
@@ -62,9 +66,22 @@ namespace AGDDPlatformer
             /* --- Read Input --- */
 
             move.x = Input.GetAxisRaw("Horizontal");
-            if (gravityModifier < 0)
+            if (reversedGravity && !groundedReverse){
+                if (isGrounded){
+                    groundedReverse = true;
+                    Debug.Log("Reverse X direction");
+                }
+            }
+            // Wait until reaching ceiling
+            if (groundedReverse)
             {
                 move.x *= -1;
+            }
+
+            // Wait until reaching ground
+            if (!reversedGravity && isGrounded && groundedReverse){
+                groundedReverse = false;
+                Debug.Log("Reverse X direction Back");
             }
 
             move.y = Input.GetAxisRaw("Vertical");
@@ -184,11 +201,11 @@ namespace AGDDPlatformer
             /* --- Adjust Sprite --- */
 
             // Assume the sprite is facing right, flip it if moving left
-            if (move.x > 0.01f)
+            if (move.x * gravityModifier > 0.01f && !inGravitySwitch)
             {
                 spriteRenderer.flipX = false;
             }
-            else if (move.x < -0.01f)
+            else if (move.x * gravityModifier < -0.01f && !inGravitySwitch)
             {
                 spriteRenderer.flipX = true;
             }
@@ -204,6 +221,14 @@ namespace AGDDPlatformer
             lastJumpTime = -jumpBufferTime * 2;
 
             velocity = Vector2.zero;
+            gravityModifier = 1;
+            defaultGravityModifier = gravityModifier;
+            inGravitySwitch = false;
+            reversedGravity = false;
+            if (spriteRenderer.flipY)
+            {
+                spriteRenderer.flipY = !spriteRenderer.flipY;
+            }
         }
 
         public void ResetDash()
