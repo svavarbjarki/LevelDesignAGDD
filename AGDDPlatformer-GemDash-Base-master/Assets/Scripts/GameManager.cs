@@ -11,6 +11,7 @@ namespace AGDDPlatformer
 
         [Header("Players")]
         public PlayerController[] players;
+        private MovingPlatform[] MovingPlatformsList;
 
         [Header("Level")]
         public PlayerGoal[] playerGoals;
@@ -43,6 +44,8 @@ namespace AGDDPlatformer
 
         IEnumerator Start()
         {
+            enumerateMovingPlatforms();
+
             timeStopped = true;
 
             endScreen.SetActive(false);
@@ -126,6 +129,16 @@ namespace AGDDPlatformer
             {
                 player.ResetPlayer();
             }
+
+            foreach (MovingPlatform platform in MovingPlatformsList)
+            {
+                platform.ResetPlatform();
+            }
+        }
+
+        private void enumerateMovingPlatforms()
+        {
+            MovingPlatformsList = FindObjectsOfType<MovingPlatform>();
         }
     }
 }
