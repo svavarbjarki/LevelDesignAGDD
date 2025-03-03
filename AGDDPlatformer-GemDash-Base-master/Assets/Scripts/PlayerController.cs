@@ -61,13 +61,14 @@ namespace AGDDPlatformer
 
         void Update()
         {
+            getInputs();
+
             isFrozen = GameManager.instance.timeStopped;
 
-            /* --- Read Input --- */
-
-            move.x = Input.GetAxisRaw("Horizontal");
-            if (reversedGravity && !groundedReverse){
-                if (isGrounded){
+            if (reversedGravity && !groundedReverse)
+            {
+                if (isGrounded)
+                {
                     groundedReverse = true;
                     Debug.Log("Reverse X direction");
                 }
@@ -79,38 +80,23 @@ namespace AGDDPlatformer
             }
 
             // Wait until reaching ground
-            if (!reversedGravity && isGrounded && groundedReverse){
+            if (!reversedGravity && isGrounded && groundedReverse)
+            {
                 groundedReverse = false;
                 Debug.Log("Reverse X direction Back");
-            }
-
-            move.y = Input.GetAxisRaw("Vertical");
-
-            if (Input.GetButtonDown("Jump"))
-            {
-                // Store jump time so that we can buffer the input
-                lastJumpTime = Time.time;
-            }
-
-            if (Input.GetButtonUp("Jump"))
-            {
-                jumpReleased = true;
             }
 
             // Clamp directional input to 8 directions for dash
             Vector2 desiredDashDirection = new Vector2(
                 move.x == 0 ? 0 : (move.x > 0 ? 1 : -1),
                 move.y == 0 ? 0 : (move.y > 0 ? 1 : -1));
+
             if (desiredDashDirection == Vector2.zero)
             {
                 // Dash in facing direction if there is no directional input;
                 desiredDashDirection = spriteRenderer.flipX ? -Vector2.right : Vector2.right;
             }
             desiredDashDirection = desiredDashDirection.normalized;
-            if (Input.GetButtonDown("Dash"))
-            {
-                wantsToDash = true;
-            }
 
             /* --- Compute Velocity --- */
 
@@ -128,18 +114,7 @@ namespace AGDDPlatformer
 
             if (isDashing)
             {
-                velocity = dashDirection * dashSpeed;
-                if (Time.time - lastDashTime >= dashTime)
-                {
-                    isDashing = false;
-
-                    gravityModifier = defaultGravityModifier;
-                    if ((gravityModifier >= 0 && velocity.y > 0) ||
-                        (gravityModifier < 0 && velocity.y < 0))
-                    {
-                        velocity.y *= jumpDeceleration;
-                    }
-                }
+                dashAction();
             }
             else
             {
@@ -198,19 +173,7 @@ namespace AGDDPlatformer
                 }
             }
 
-            /* --- Adjust Sprite --- */
-
-            // Assume the sprite is facing right, flip it if moving left
-            if (move.x * gravityModifier > 0.01f && !inGravitySwitch)
-            {
-                spriteRenderer.flipX = false;
-            }
-            else if (move.x * gravityModifier < -0.01f && !inGravitySwitch)
-            {
-                spriteRenderer.flipX = true;
-            }
-
-            spriteRenderer.color = canDash ? canDashColor : cantDashColor;
+            updateSprite();
         }
 
         public void ResetPlayer()
@@ -246,5 +209,81 @@ namespace AGDDPlatformer
         {
             windForce = force;
         }
+
+        public void ApplyPlatformVelocity(Vector2 platformVelocity)
+        {
+
+            this.velocity += platformVelocity;
+        }
+
+        private void dashAction()
+        {
+            velocity = dashDirection * dashSpeed;
+            if (Time.time - lastDashTime >= dashTime)
+            {
+                isDashing = false;
+
+                gravityModifier = defaultGravityModifier;
+                if ((gravityModifier >= 0 && velocity.y > 0) ||
+                    (gravityModifier < 0 && velocity.y < 0))
+                {
+                    velocity.y *= jumpDeceleration;
+                }
+            }
+        }
+
+        #region  Input Capture
+        private void getInputs()
+        {
+            movementInput();
+            jumpInput();
+            dashInput();
+        }
+
+        private void movementInput()
+        {
+            move.x = Input.GetAxisRaw("Horizontal");
+            move.y = Input.GetAxisRaw("Vertical");
+        }
+
+        private void jumpInput()
+        {
+            if (Input.GetButtonDown("Jump"))
+            {
+                lastJumpTime = Time.time;
+            }
+            if (Input.GetButtonUp("Jump"))
+            {
+                jumpReleased = true;
+            }
+        }
+
+        private void dashInput()
+        {
+            if (Input.GetButtonDown("Dash"))
+            {
+                wantsToDash = true;
+            }
+        }
+
+        #endregion
+
+        private void updateSprite()
+        {
+            /* --- Adjust Sprite --- */
+
+            // Assume the sprite is facing right, flip it if moving left
+            if (move.x * gravityModifier > 0.01f && !inGravitySwitch)
+            {
+                spriteRenderer.flipX = false;
+            }
+            else if (move.x * gravityModifier < -0.01f && !inGravitySwitch)
+            {
+                spriteRenderer.flipX = true;
+            }
+
+            spriteRenderer.color = canDash ? canDashColor : cantDashColor;
+        }
+
     }
 }
