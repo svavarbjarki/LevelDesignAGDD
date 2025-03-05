@@ -33,8 +33,8 @@ namespace AGDDPlatformer
         public AudioClip jumpSound;
         public AudioClip dashSound;
 
-        Vector2 startPosition;
-        bool startOrientation;
+        public Vector2 startPosition;
+        public bool startOrientation;
 
         float lastJumpTime;
         float lastGroundedTime;
