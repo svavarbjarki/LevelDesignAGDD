@@ -1,76 +1,129 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace AGDDPlatformer
 {
     public class MovingPlatform : KinematicObject
     {
-        public float Speed; //Probably should be the same as player max speed
-        public Transform StartPoint;
-        public Transform EndPoint;
+        [SerializeField] private float Speed;
+        [SerializeField] private float tolerance = 0.1f;
 
-        enum Points
+        [SerializeField] private Transform currentTarget;
+        [SerializeField] private GameObject TargetsContainer;
+        [SerializeField] private List<Transform> targets = new List<Transform>();
+
+        private void Awake()
         {
-            Start, End
+            PopulateTargets();
+            gravityModifier = 0;
+            currentTarget = targets[0];
         }
-
-        private Points GoingTowards = Points.End;
 
         void Update()
         {
-            //Move the platform back and forth between the start and end points
-            Vector2 startToEnd = EndPoint.position - StartPoint.position;
-            Vector2 progressToEnd = EndPoint.position - transform.position;
-            Vector2 progressToStart = StartPoint.position - transform.position;
-            if (GoingTowards == Points.End)
+            if (Vector2.Distance(transform.position, currentTarget.position) < tolerance)
             {
-                velocity = progressToEnd.normalized * Speed;
-            }
-            else
-            {
-                velocity = progressToStart.normalized * Speed;
+                IterateToNextTarget();
             }
 
-            if (GoingTowards == Points.End && Vector2.Dot(progressToEnd, startToEnd) <= 0)
-            {
-                GoingTowards = Points.Start;
-            }
-            else if (GoingTowards == Points.Start && Vector2.Dot(progressToStart, -startToEnd) <= 0)
-            {
-                GoingTowards = Points.End;
-            }
+            setVelocity();
         }
 
-        void OnCollisionStay2D(Collision2D other)
+        void setVelocity()
         {
-            var otherBody = other.gameObject.GetComponent<KinematicObject>();
-            if (otherBody == null) { return; }
+            Vector2 direction = (currentTarget.position - transform.position).normalized;
+            velocity = direction * Speed;
+        }
 
-            //Attatch if something is grounded on the platform
-            if (otherBody.GetGroundedOnObject() == gameObject)
+        void IterateToNextTarget()
+        {
+            int index = targets.IndexOf(currentTarget);
+            if (index >= targets.Count - 1)
             {
-                otherBody.AttatchTo(this);
+                index = 0;
             }
             else
             {
-                //If it is not grounded we can detatch. 
-                otherBody.Detatch();
-                //If it is a player, give them a small boost to simulate inertia.
-                otherBody.GetComponent<PlayerController>()?.SetJumpBoost(new Vector2(velocity.x, 0));
+                index++;
+            }
+            currentTarget = targets[index];
+        }
+
+        void OnCollisionEnter2D(Collision2D other)
+        {
+            var player = other.gameObject.GetComponent<PlayerController>();
+            if (player != null)
+            {
+                player.AttatchTo(this);
             }
         }
 
         void OnCollisionExit2D(Collision2D other)
         {
-            var otherBody = other.gameObject.GetComponent<KinematicObject>();
-            if (otherBody == null) { return; }
 
-            //We can detatch if the object exits the collision.
-            otherBody.Detatch();
-            //If it is a player, give them a small boost to simulate inertia.
-            otherBody.GetComponent<PlayerController>()?.SetJumpBoost(new Vector2(velocity.x, 0));
+            var player = other.gameObject.GetComponent<PlayerController>();
+            if (player != null)
+            {
+                player.Detatch();
+            }
         }
+
+        private void PopulateTargets()
+        {
+            targets.Clear();
+
+            if (TargetsContainer == null)
+            {
+                Debug.LogError($"{name}: TargetsContainer is NOT assigned!");
+                return;
+            }
+
+            Transform startPoint = null;
+            Transform endPoint = null;
+            List<Transform> middlePoints = new List<Transform>();
+
+            foreach (Transform child in TargetsContainer.transform)
+            {
+                if (child.name == "StartPoint")
+                {
+                    startPoint = child;
+                }
+                else if (child.name == "EndPoint")
+                {
+                    endPoint = child;
+                }
+                else
+                {
+                    middlePoints.Add(child);
+                }
+            }
+
+            middlePoints.Sort((a, b) => string.Compare(a.name, b.name));
+
+            if (startPoint == null)
+            {
+                Debug.LogError($"{name}: StartPoint not found in TargetsContainer!");
+                return;
+            }
+
+            if (endPoint == null)
+            {
+                Debug.LogError($"{name}: EndPoint not found in TargetsContainer!");
+                return;
+            }
+
+            targets.Add(startPoint);
+            targets.AddRange(middlePoints);
+            targets.Add(endPoint);
+
+            currentTarget = targets[0];
+        }
+        public void ResetPlatform()
+        {
+            currentTarget = targets[0];
+            transform.position = targets[0].position;
+            velocity = Vector2.zero;
+        }
+
     }
 }
